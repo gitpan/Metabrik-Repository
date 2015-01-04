@@ -1,5 +1,5 @@
 #
-# $Id: Heartbleed.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Heartbleed.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # ssl::heartbleed Brik
 #
@@ -11,7 +11,7 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(tag1 tag2) ],
       attributes => {
          attribute1 => [ qw(value_type) ],
@@ -29,7 +29,6 @@ sub brik_properties {
          'Module::Name1' => [ qw(Function1) ],
          'Module::Name2' => [ qw() ],
       },
-      require_used => [ qw(Brik1 Brik2) ],
    };
 }
 
@@ -45,13 +44,11 @@ sub brik_use_properties {
 }
 
 sub brik_init {
-   my $self = shift->SUPER::brik_init(
-      @_,
-   ) or return 1; # Init already done
+   my $self = shift;
 
    # Do your init here
 
-   return $self;
+   return $self->SUPER::brik_init;
 }
 
 sub command1 {
@@ -630,7 +627,7 @@ Metabrik::Ssl::Heartbleed - ssl::heartbleed Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

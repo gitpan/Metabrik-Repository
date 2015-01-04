@@ -1,9 +1,9 @@
 #
-# $Id: Arp.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Arp.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
-# system::arp brik
+# network::arp Brik
 #
-package Metabrik::System::Arp;
+package Metabrik::Network::Arp;
 use strict;
 use warnings;
 
@@ -11,13 +11,15 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
-      tags => [ qw(unstable arp cache) ],
+      revision => '$Revision: eff9afda3723 $',
+      tags => [ qw(unstable arp cache poison) ],
       attributes => {
          _dnet => [ qw(Net::Libdnet::Arp) ],
       },
       commands => {
          cache => [ ],
+         half_poison => [ ],
+         full_poison => [ ],
       },
       require_modules => {
          'Net::Libdnet::Arp' => [ ],
@@ -26,18 +28,16 @@ sub brik_properties {
 }
 
 sub brik_init {
-   my $self = shift->SUPER::brik_init(
-      @_,
-   ) or return 1; # Init already done
+   my $self = shift;
 
    my $dnet = Net::Libdnet::Arp->new;
    if (! defined($dnet)) {
-      return $self->log->error("unable to create Net::Libdnet::Arp object");
+      return $self->log->error("brik_init: unable to create Net::Libdnet::Arp object");
    }
 
    $self->_dnet($dnet);
 
-   return $self;
+   return $self->SUPER::brik_init;
 }
 
 sub _loop {
@@ -58,17 +58,33 @@ sub cache {
    return \%data;
 }
 
+sub half_poison {
+   my $self = shift;
+
+   $self->log->info("TODO");
+
+   return 1;
+}
+
+sub full_poison {
+   my $self = shift;
+
+   $self->log->info("TODO");
+
+   return 1;
+}
+
 1;
 
 __END__
 
 =head1 NAME
 
-Metabrik::System::Arp - system::arp Brik
+Metabrik::Network::Arp - network::arp Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

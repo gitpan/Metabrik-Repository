@@ -1,5 +1,5 @@
 #
-# $Id: Compress.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Compress.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # file::zip brik
 #
@@ -7,25 +7,24 @@ package Metabrik::File::Compress;
 use strict;
 use warnings;
 
-use base qw(Metabrik);
+use base qw(Metabrik::Shell::Command);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
-      tags => [ qw(unstable compress unzip uncompress) ],
+      revision => '$Revision: eff9afda3723 $',
+      tags => [ qw(unstable compress unzip gunzip uncompress) ],
       attributes => {
          input => [ qw(file) ],
          output => [ qw(file) ],
          destdir => [ qw(directory) ],
       },
       commands => {
-         unzip => [ ],
-      },
-      require_used => {
-         'shell::command' => [ ],
+         unzip => [ qw(input|OPTIONAL destdir|OPTIONAL) ],
+         gunzip => [ qw(input|OPTIONAL output|OPTIONAL) ],
       },
       require_binaries => {
          'unzip' => [ ],
+         'gunzip' => [ ],
       },
    };
 }
@@ -42,21 +41,43 @@ sub brik_use_properties {
 
 sub unzip {
    my $self = shift;
-   my ($destdir) = @_;
+   my ($input, $destdir) = @_;
 
-   my $input = $self->input;
+   $input ||= $self->input;
    if (! defined($input)) {
       return $self->log->error($self->brik_help_set('input'));
    }
 
-   my $dir = $self->destdir;
-   if (! defined($dir)) {
+   $destdir ||= $self->destdir;
+   if (! defined($destdir)) {
       return $self->log->error($self->brik_help_set('destdir'));
    }
 
-   my $cmd = "unzip -o $input -d $dir/";
+   my $cmd = "unzip -o $input -d $destdir/";
 
-   return $self->context->run('shell::command', 'system', $cmd);
+   return $self->system($cmd);
+}
+
+sub gunzip {
+   my $self = shift;
+   my ($input, $output) = @_;
+
+   $input ||= $self->input;
+   if (! defined($input)) {
+      return $self->log->error($self->brik_help_set('input'));
+   }
+
+   my $file_out;
+   if (defined($output)) {
+      $file_out = $output;
+   }
+   else {
+      ($file_out = $input) =~ s/.gz$//;
+   }
+
+   my $cmd = "gunzip -c $input > $file_out";
+
+   return $self->system($cmd);
 }
 
 1;
@@ -69,7 +90,7 @@ Metabrik::File::Compress - file::compress Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

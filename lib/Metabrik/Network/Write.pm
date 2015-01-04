@@ -1,5 +1,5 @@
 #
-# $Id: Write.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Write.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # network::write Brik
 #
@@ -11,7 +11,7 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable network write ethernet ip raw socket) ],
       attributes => {
          device => [ qw(device) ],
@@ -22,8 +22,12 @@ sub brik_properties {
          _fd => [ qw(INTERNAL) ],
       },
       commands => {
-         open => [ ],
+         open => [ qw(layer|OPTIONAL arg2|OPTIONAL arg3|OPTIONAL) ],
          send => [ qw($data) ],
+         lsend => [ qw($data) ],
+         nsend => [ qw($data) ],
+         tsend => [ qw($data) ],
+         fnsend_reply => [ qw($frame target_address|OPTIONAL) ],
          close => [ ],
       },
       require_modules => {
@@ -31,6 +35,7 @@ sub brik_properties {
          'Net::Write::Layer2' => [ ],
          'Net::Write::Layer3' => [ ],
          'Net::Write::Layer4' => [ ],
+         'Metabrik::Network::Read' => [ ],
       },
    };
 }
@@ -50,6 +55,9 @@ sub brik_use_properties {
 
 sub open {
    my $self = shift;
+   my ($layer, $arg2, $arg3) = @_;
+
+   $layer ||= $self->layer;
 
    my $family = $self->family eq 'ipv6'
       ? Net::Write::Layer::NW_AF_INET6()
@@ -61,29 +69,41 @@ sub open {
 
    my $fd;
    if ($self->layer == 2) {
+      $arg2 ||= $self->device;
+
       $fd = Net::Write::Layer2->new(
-         dev => $self->device,
+         dev => $arg2
       ) or return $self->log->error("open: layer2: error");
+
+      $self->log->verbose("open: layer2: success. Will use device [$arg2]");
    }
    elsif ($self->layer == 3) {
-      if (! defined($self->target)) {
+      $arg2 ||= $self->target;
+      if (! defined($arg2)) {
          return $self->log->error($self->brik_help_set('target'));
       }
+
       $fd = Net::Write::Layer3->new(
-         dst => $self->target,
+         dst => $arg2,
          protocol => Net::Write::Layer::NW_IPPROTO_RAW(),
          family => $family,
       ) or return $self->log->error("open: layer3: error");
+
+      $self->log->verbose("open: layer3: success");
    }
    elsif ($self->layer == 4) {
+      $arg2 ||= $self->target;
       if (! defined($self->target)) {
          return $self->log->error($self->brik_help_set('target'));
       }
+
       $fd = Net::Write::Layer4->new(
-         dst => $self->target,
+         dst => $arg2,
          protocol => $protocol,
          family => $family,
       ) or return $self->log->error("open: layer4: error");
+
+      $self->log->verbose("open: layer4: success");
    }
 
    $fd->open or return $self->log->error("open: error");
@@ -125,6 +145,103 @@ sub close {
    return 1;
 }
 
+sub lsend {
+   my $self = shift;
+   my ($data) = @_;
+
+   # Save state
+   my $layer = $self->layer;
+   $self->layer(2);
+
+   $self->open or return $self->log->error("nsend: open failed");
+   $self->send($data) or return $self->log->error("nsend: send failed");
+   $self->close;
+
+   # Restore state
+   $self->layer($layer);
+
+   return length($data);
+}
+
+sub nsend {
+   my $self = shift;
+   my ($data) = @_;
+
+   # Save state
+   my $layer = $self->layer;
+   $self->layer(3);
+
+   $self->open or return $self->log->error("nsend: open failed");
+   $self->send($data) or return $self->log->error("nsend: send failed");
+   $self->close;
+
+   # Restore state
+   $self->layer($layer);
+
+   return length($data);
+}
+
+sub fnsend_reply {
+   my $self = shift;
+   my ($frame, $target) = @_;
+
+   if (! defined($frame)) {
+      return $self->log->error($self->brik_help_run('fnsend_reply'));
+   }
+
+   if (ref($frame) ne 'Net::Frame::Simple') {
+      return $self->log->error("fnsend_reply: frame must be Net::Frame::Simple object");
+   }
+
+   # Try to find the target by myself
+   if (! defined($target)) {
+      my $ip = $frame->ref->{'IPv4'} || $frame->ref->{'IPv6'};
+      if (! defined($ip)) {
+         return $self->log->error($self->brik_help_run('fnsend_reply'));
+      }
+      $target = $ip->dst;
+   }
+
+   my $read = Metabrik::Network::Read->new_from_brik($self);
+   $read->layer(2);
+   $read->device($self->device);
+   $read->rtimeout($self->global->rtimeout);
+
+   $self->log->verbose("fnsend_reply: using device [".$read->device."]");
+
+   my $in = $read->open or return $self->log->error("fnsend_reply: network::read open failed");
+
+   # Save state
+   my $saved_layer = $self->layer;
+   my $saved_target = $self->target;
+   $self->layer(3);
+   $self->target($target);
+
+   my $out = $self->open or return $self->log->error("fnsend_reply: open failed");
+
+   $frame->send($out);
+
+   my $reply;
+   until ($in->timeout) {
+      if ($reply = $frame->recv($in)) {
+         last;
+      }
+   }
+
+   $self->close;
+   $read->close;
+
+   # Restore state
+   $self->layer($saved_layer);
+   $self->target($saved_target);
+
+   return $reply;
+}
+
+sub tsend {
+   my $self = shift;
+}
+
 1;
 
 __END__
@@ -135,7 +252,7 @@ Metabrik::Network::Write - network::write Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

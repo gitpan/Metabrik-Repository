@@ -1,9 +1,9 @@
 #
-# $Id: Base64.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Json.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
-# encoding::base64 Brik
+# string::json Brik
 #
-package Metabrik::Encoding::Base64;
+package Metabrik::String::Json;
 use strict;
 use warnings;
 
@@ -11,14 +11,14 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
-      tags => [ qw(unstable encode decode base64) ],
+      revision => '$Revision: eff9afda3723 $',
+      tags => [ qw(unstable encode decode json) ],
       commands => {
-         encode => [ qw($data) ],
+         encode => [ qw($data_list|$data_hash) ],
          decode => [ qw($data) ],
       },
       require_modules => {
-         'MIME::Base64' => [ ],
+         'JSON::XS' => [ ],
       },
    };
 }
@@ -31,7 +31,11 @@ sub encode {
       return $self->log->error($self->brik_help_run('encode'));
    }
 
-   my $encoded = MIME::Base64::encode_base64($data);
+   if (ref($data) ne 'ARRAY' && ref($data) ne 'HASH') {
+      return $self->log->error("encode: you need to give data as an ARRAYREF or HASHREF");
+   }
+
+   my $encoded = JSON::XS::encode_json($data);
 
    return $encoded;
 }
@@ -44,7 +48,7 @@ sub decode {
       return $self->log->error($self->brik_help_run('decode'));
    }
 
-   my $decoded = MIME::Base64::decode_base64($data);
+   my $decoded = JSON::XS::decode_json($data);
 
    return $decoded;
 }
@@ -55,11 +59,11 @@ __END__
 
 =head1 NAME
 
-Metabrik::Encoding::Base64 - encoding::base64 Brik
+Metabrik::String::Json - string::json Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

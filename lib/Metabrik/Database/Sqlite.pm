@@ -1,5 +1,5 @@
 #
-# $Id: Sqlite.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Sqlite.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # database::sqlite Brik
 #
@@ -11,7 +11,7 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable database sqlite) ],
       attributes => {
          db => [ qw(sqlite_db) ],
@@ -30,9 +30,7 @@ sub brik_properties {
 }
 
 sub brik_init {
-   my $self = shift->SUPER::brik_init(
-      @_,
-   ) or return 1; # Init already done
+   my $self = shift;
 
    my $db = $self->db;
    if (! defined($db)) {
@@ -50,7 +48,7 @@ sub brik_init {
 
    $self->dbh($dbh);
 
-   return $self;
+   return $self->SUPER::brik_init;
 }
 
 sub exec {
@@ -88,7 +86,7 @@ Metabrik::Database::Sqlite - database::sqlite Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

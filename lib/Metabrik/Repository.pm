@@ -1,11 +1,11 @@
 #
-# $Id: Repository.pm 138 2014-09-29 19:48:37Z gomor $
+# $Id: Repository.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 package Metabrik::Repository;
 use strict;
 use warnings;
 
-our $VERSION = '1.00';
+our $VERSION = '1.04';
 
 1;
 
@@ -17,7 +17,7 @@ Metabrik::Repository - main Metabrik repository
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

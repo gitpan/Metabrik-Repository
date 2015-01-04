@@ -1,3 +1,77 @@
+20150104
+   AFFECT: database::cwe, database::keystore, file::json, iana::countrycode, log::dual
+
+   NOTE: require_used property is now deprecated
+
+   - database::cwe update Command returns destination datadir i/o status code
+   - database::keystore search Command returns ARRAYREF i/o status code
+   - file::json write Command returns output filename i/o string
+   - iana::countrycode country_code_types Command must take an argument containing data
+   - iana::countrycode load Command returns ARRAYREF i/o HASHREF
+   - iana::countrycode save Command must take a data argument
+   - log::dual error Command returns undef to state an error condition
+
+20141231
+   AFFECT: file::csv
+
+   - switching from using Text::CSV::Hashify to Text::CSV
+   - renamed has_header Attribute to first_line_is_header
+   - changed default for Attribute first_line_is_header from 0 to 1
+   - removed key Attribute
+   - removed format Attribute
+   - read Command can now returns an ARRAY of HASHes or an ARRAY of ARRAYs
+
+20141229
+   AFFECT: string::uri
+
+   - parse Command returns an HASHREF instead of a URI object
+
+20141227
+   AFFECT: time::universal
+
+   - renamed timezone_list Command to list_timezones
+   - renamed timezone_search Command to search_timezone
+   - localtime now returns a HASHREF instead of a string
+   - timezone_search now returns an ARRAYREF instead of a string
+   - removed timezone_show Command
+
+20141220
+   AFFECT: database::nvd
+
+   - removed Attributes uri_* and xml_*
+   - renamed xml Attribute to loaded_xml
+   - search Command renamed to cve_search
+   - getxml Command renamed to get_cve_xml
+   - search_by_cpe Command renamed to cpe_search
+
+20141216
+   AFFECT: network::address
+
+   - removed default value for subnet Attribute
+   - block Command removed
+   - iplist Command renamed to ipv4_list
+   - first Command renamed to network_address
+   - last Command renamed to broadcast_address
+
+20141129
+   AFFECT: address::netmask, network::netbios
+
+   - address::netmask renamed to network::address
+   - network::netbios nodestatus Command renamed to probe Command
+
+20141123
+   AFFECTS: system::route, system::arp
+
+   - system::route renamed to network::route
+   - system::arp renamed to network::arp
+
+20141119
+   AFFECTS: encoding::base64, encoding::hexa, encoding::html, encoding::json, encoding::rot13, encoding::xml
+            encoding::utf8
+
+   - encoding::utf8 removed
+   - encoding::* renamed to string::*
+
 20141116
    AFFECTS: netbios::name, scanner::sqlmap, scanner::nikto, scanner::nmap, ssdp::ssdp, www::client
 

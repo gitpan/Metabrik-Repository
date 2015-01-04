@@ -1,5 +1,5 @@
 #
-# $Id: Template.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Template.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # example::template Brik
 #
@@ -9,9 +9,10 @@ use warnings;
 
 use base qw(Metabrik);
 
+# Default attribute values put here will BE inherited by subclasses
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(tag1 tag2) ],
       attributes => {
          attribute1 => [ qw(type) ],
@@ -29,16 +30,13 @@ sub brik_properties {
          'Module::Name1' => [ qw(Function1) ],
          'Module::Name2' => [ qw() ],
       },
-      require_used => {
-         'Brik1' => [ ],
-         'Brik2' => [ ],
-      },
       require_binaries => {
          'binary', => [ ],
       },
    };
 }
 
+# Warning: default attribute values put here will NOT be inherited by subclasses
 sub brik_use_properties {
    my $self = shift;
 
@@ -54,13 +52,11 @@ sub brik_preinit {
 }
 
 sub brik_init {
-   my $self = shift->SUPER::brik_init(
-      @_,
-   ) or return 1; # Init already done
+   my $self = shift;
 
-   # Do your init here
+   # Do your init here, return 0 on error.
 
-   return $self;
+   return $self->SUPER::brik_init;
 }
 
 sub command1 {
@@ -157,7 +153,7 @@ Template to write a new Metabrik Brik.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

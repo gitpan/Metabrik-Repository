@@ -1,5 +1,5 @@
 #
-# $Id: Www.pm 363 2014-11-16 15:36:29Z gomor $
+# $Id: Www.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # client::www Brik
 #
@@ -11,14 +11,22 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 363 $',
-      tags => [ qw(unstable browser http client www) ],
+      revision => '$Revision: eff9afda3723 $',
+      tags => [ qw(unstable browser http client www javascript screenshot) ],
       attributes => {
          uri => [ qw(uri) ],
          mechanize => [ qw(OBJECT) ],
+         ssl_verify => [ qw(0|1) ],
+         username => [ qw(username) ],
+         password => [ qw(password) ],
+      },
+      # For SSL verify stuff, better to look at AnyEvent::TLS.
+      attributes_default => {
+         ssl_verify => 1,
       },
       commands => {
-         get => [ ],
+         get => [ qw(uri|OPTIONAL) ],
+         getcertificate => [ qw(uri|OPTIONAL) ],
          content => [ ],
          post => [ qw(SCALAR) ],
          info => [ ],
@@ -26,42 +34,70 @@ sub brik_properties {
          links => [ ],
          headers => [ ],
          status => [ ],
-         getcertificate => [ ],
          getcertificate2 => [ qw(SCALAR SCALAR) ],
+         screenshot => [ qw(uri output_file) ],
+         eval_javascript => [ qw(js uri|OPTIONAL) ],
       },
       require_modules => {
          'Data::Dumper' => [ ],
          'IO::Socket::SSL' => [ ],
          'LWP::UserAgent' => [ ],
+         'LWP::ConnCache' => [ ],
          'URI' => [ ],
          'WWW::Mechanize' => [ ],
+         'WWW::Mechanize::PhantomJS' => [ ],
+         'Metabrik::File::Write' => [ ],
+      },
+      require_binaries => {
+         'phantomjs' => [ ],
       },
    };
 }
 
 sub get {
    my $self = shift;
+   my ($uri, $username, $password) = @_;
 
-   my $uri = $self->uri;
+   $uri ||= $self->uri;
    if (! defined($uri)) {
       return $self->log->error($self->brik_help_set('uri'));
    }
 
-   $self->debug && $self->log->debug("get: uri[$uri]");
+   my %args = ();
+   if (! $self->ssl_verify) {
+      $args{ssl_opts} = { SSL_verify_mode => 'SSL_VERIFY_NONE'};
+   }
 
-   $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
-
-   my $mech = WWW::Mechanize->new;
+   my $mech = WWW::Mechanize->new(%args);
    $mech->agent_alias('Linux Mozilla');
-   #$mech->ssl_opts(SSL_ca_path => '/etc/ssl/certs');
-   #$mech->ssl_opts(verify_hostname => 0);
 
-   $mech->get($uri);
-   $self->log->verbose("get: GET $uri");
+   $username ||= $self->username;
+   $password ||= $self->password;
+   if (defined($username) && defined($password)) {
+      $mech->credentials($username, $password);
+   }
 
    $self->mechanize($mech);
 
-   return $mech;
+   $self->log->verbose("get: $uri");
+
+   my $response;
+   eval {
+      $response = $mech->get($uri);
+   };
+   if ($@) {
+      return $self->log->error("get: unable to get uri [$uri]");
+   }
+
+   my %response = ();
+   $response{code} = $response->code;
+   $response{body} = $response->decoded_content;
+
+   my $headers = $response->headers;
+   $response{headers} = { map { $_ => $headers->{$_} } keys %$headers };
+   delete $response{headers}->{'::std_case'};
+
+   return \%response;
 }
 
 sub content {
@@ -188,7 +224,7 @@ sub links {
    my @links = ();
    for my $l ($self->mechanize->links) {
       push @links, $l->url;
-      print $l->url."\n";
+      $self->log->verbose("links: found link [".$l->url."]");
    }
 
    return \@links;
@@ -202,7 +238,6 @@ sub headers {
    }
 
    my $headers = $self->mechanize->response->headers;
-   print Data::Dumper::Dumper($headers)."\n";
 
    return $headers;
 }
@@ -215,8 +250,6 @@ sub status {
    }
 
    my $mech = $self->mechanize;
-
-   print $mech->status."\n";
 
    return $mech->status;
 }
@@ -256,12 +289,13 @@ sub forms {
 }
 
 #
-# Note: works only with IO::Socket::SSL, not with Net:SSL (using Crypt::SSLeay)
+# Note: works only with IO::Socket::SSL, not with Net::SSL (using Crypt::SSLeay)
 #
 sub getcertificate {
    my $self = shift;
+   my ($uri) = @_;
 
-   my $uri = $self->uri;
+   $uri ||= $self->uri;
    if (! defined($uri)) {
       return $self->log->error($self->brik_help_set('uri'));
    }
@@ -271,7 +305,8 @@ sub getcertificate {
    }
 
    my $ua = LWP::UserAgent->new(
-      ssl_opts => { verify_hostname => 0 }, # will do manual check
+      #ssl_opts => { verify_hostname => 0 }, # will do manual check
+      ssl_opts => { SSL_verify_mode => 'SSL_VERIFY_NONE'},
    );
    $ua->timeout($self->global->rtimeout);
    $ua->max_redirect(0);
@@ -286,6 +321,10 @@ sub getcertificate {
    my $cc = $ua->conn_cache->{cc_conns};
    if (! defined($cc)) {
       return $self->log->error("unable to retrieve connection cache");
+   }
+
+   if (scalar(@$cc) == 0) {
+      return $self->log->error("getcertificate: no connection cached");
    }
 
    my $sock = $cc->[0][0];
@@ -528,7 +567,7 @@ sub getcertificate2 {
       return $self->log->error($errs);
    }
 
-   set_fd($ssl, fileno(Net::SSLeay::SSLCAT_S));
+   set_fd($ssl, fileno(Net::SSLeay::SSLCAT_S()));
    if ($errs = print_errs('fileno')) {
       return $self->log->error($errs);
    }
@@ -646,6 +685,47 @@ sub getcertificate2 {
    return $server_cert;
 }
 
+sub screenshot {
+   my $self = shift;
+   my ($uri, $output) = @_;
+
+   my $mech = WWW::Mechanize::PhantomJS->new
+      or return $self->log->error("screenshot: PhantomJS failed");
+   $mech->get($uri)
+      or return $self->log->error("screenshot: get uri [$uri] failed");
+
+   my $data = $mech->content_as_png
+      or return $self->log->error("screenshot: content_as_png failed");
+
+   my $write = Metabrik::File::Write->new_from_brik($self);
+   $write->encoding('ascii');
+   $write->overwrite(1);
+   $write->append(0);
+
+   $write->open($output) or return $self->log->error("screenshot: open failed");
+   $write->write($data) or return $self->log->error("screenshot: write failed");
+   $write->close;
+
+   return $output;
+}
+
+sub eval_javascript {
+   my $self = shift;
+   my ($js, $uri) = @_;
+
+   # Perl module Wight may also be an option.
+
+   my $mech = WWW::Mechanize::PhantomJS->new
+      or return $self->log->error("eval_javascript: PhantomJS failed");
+
+   if ($uri) {
+      $mech->get($uri)
+         or return $self->log->error("eval_javascript: get uri [$uri] failed");
+   }
+
+   return $mech->eval_in_page($js);
+}
+
 1;
 
 __END__
@@ -656,7 +736,7 @@ Metabrik::Client::Www - client::www Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

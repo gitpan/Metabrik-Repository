@@ -1,5 +1,5 @@
 #
-# $Id: Nmap.pm 179 2014-10-02 18:04:01Z gomor $
+# $Id: Nmap.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # network::nmap Brik
 #
@@ -11,7 +11,7 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 363 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable network security scanner nmap) ],
       attributes => {
          targets => [ qw(nmap_targets) ],
@@ -92,8 +92,20 @@ sub tcp_syn {
    my $ports = $self->ports;
    my $max_retries = $self->max_retries;
    my $rate = $self->rate;
+   my $service_scan = $self->service_scan;
+   my $save_output = $self->save_output;
 
-   my $cmd = "sudo nmap -v -sS --max-retries $max_retries --min-rate $rate --max-rate $rate $args $ports $targets";
+   my $datadir = $self->global->datadir;
+
+   my $cmd = "sudo nmap -v -sS --max-retries $max_retries --min-rate $rate --max-rate $rate $args";
+   if ($service_scan) {
+      $cmd .= " -sV";
+   }
+   if ($save_output) {
+      $cmd .= " -oA $datadir/nmap_output";
+   }
+   $cmd .= " $ports $targets";
+
    my $result = `$cmd`;
 
    my $parsed = $self->_nmap_parse($cmd, $result);
@@ -140,8 +152,20 @@ sub udp {
    my $ports = $self->ports;
    my $max_retries = $self->max_retries;
    my $rate = $self->rate;
+   my $service_scan = $self->service_scan;
+   my $save_output = $self->save_output;
 
-   my $cmd = "sudo nmap -v -sU --max-retries $max_retries --min-rate $rate --max-rate $rate $args $ports $targets";
+   my $datadir = $self->global->datadir;
+
+   my $cmd = "sudo nmap -v -sU --max-retries $max_retries --min-rate $rate --max-rate $rate $args";
+   if ($service_scan) {
+      $cmd .= " -sV";
+   }
+   if ($save_output) {
+      $cmd .= " -oA $datadir/nmap_output";
+   }
+   $cmd .= " $ports $targets";
+
    my $result = `$cmd`;
 
    my $parsed = $self->_nmap_parse($cmd, $result);
@@ -159,7 +183,7 @@ Metabrik::Network::Nmap - network::nmap Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

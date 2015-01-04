@@ -1,9 +1,9 @@
 #
-# $Id: Base64.pm 89 2014-09-17 20:29:29Z gomor $
+# $Id: Html.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
-# encoding::base64 Brik
+# string::html Brik
 #
-package Metabrik::Encoding::Utf8;
+package Metabrik::String::Html;
 use strict;
 use warnings;
 
@@ -11,14 +11,14 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
-      tags => [ qw(TODO unstable encode decode utf8) ],
+      revision => '$Revision: eff9afda3723 $',
+      tags => [ qw(unstable encode decode html escape) ],
       commands => {
          encode => [ qw($data) ],
          decode => [ qw($data) ],
       },
       require_modules => {
-         'MIME::Base64' => [ ],
+         'URI::Escape' => [ ],
       },
    };
 }
@@ -31,7 +31,7 @@ sub encode {
       return $self->log->error($self->brik_help_run('encode'));
    }
 
-   my $encoded = MIME::Base64::encode_base64($data);
+   my $encoded = URI::Escape::uri_escape($data);
 
    return $encoded;
 }
@@ -44,7 +44,7 @@ sub decode {
       return $self->log->error($self->brik_help_run('decode'));
    }
 
-   my $decoded = MIME::Base64::decode_base64($data);
+   my $decoded = URI::Escape::uri_unescape($data);
 
    return $decoded;
 }
@@ -55,11 +55,11 @@ __END__
 
 =head1 NAME
 
-Metabrik::Encoding::Utf8 - encoding::utf8 Brik
+Metabrik::String::Html - string::html Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

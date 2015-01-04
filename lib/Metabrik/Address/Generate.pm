@@ -1,5 +1,5 @@
 #
-# $Id: Generate.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Generate.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # address::generate Brik
 #
@@ -11,7 +11,7 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable address ipv4 routable reserved) ],
       attributes => {
          output_directory => [ qw(directory) ],
@@ -26,6 +26,9 @@ sub brik_properties {
       },
       require_modules => {
          'List::Util' => [ 'shuffle' ],
+      },
+      require_binaries => {
+         'ulimit' => [ ],
       },
    };
 }
@@ -43,9 +46,7 @@ sub brik_use_properties {
 }
 
 sub brik_init {
-   my $self = shift->SUPER::brik_init(
-      @_,
-   ) or return 1; # Init already done
+   my $self = shift;
 
    # Increase the max open files limit under Linux
    if ($^O eq 'Linux') {
@@ -56,7 +57,7 @@ sub brik_init {
       mkdir($self->output_directory);
    }
 
-   return $self;
+   return $self->SUPER::brik_init;
 }
 
 sub ipv4_reserved_ranges {
@@ -174,7 +175,7 @@ Metabrik::Address::Generate - address::generate Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

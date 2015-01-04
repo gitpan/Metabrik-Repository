@@ -1,9 +1,9 @@
 #
-# $Id: Xml.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Rot13.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
-# encoding::xml Brik
+# string::rot13 Brik
 #
-package Metabrik::Encoding::Xml;
+package Metabrik::String::Rot13;
 use strict;
 use warnings;
 
@@ -11,14 +11,11 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
-      tags => [ qw(unstable encode decode xml) ],
+      revision => '$Revision: eff9afda3723 $',
+      tags => [ qw(unstable encode decode rot13) ],
       commands => {
-         encode => [ qw($data_hash) ],
+         encode => [ qw($data) ],
          decode => [ qw($data) ],
-      },
-      require_modules => {
-         'XML::Simple' => [ ],
       },
    };
 }
@@ -31,13 +28,9 @@ sub encode {
       return $self->log->error($self->brik_help_run('encode'));
    }
 
-   if (ref($data) ne 'HASH') {
-      return $self->log->error("encode: you need to give data as HASHREF");
-   }
+   (my $encoded = $data) =~ tr/n-za-m/a-z/;
 
-   my $xs = XML::Simple->new;
-
-   return $xs->XMLout($data);
+   return $encoded;
 }
 
 sub decode {
@@ -48,9 +41,7 @@ sub decode {
       return $self->log->error($self->brik_help_run('decode'));
    }
 
-   my $xs = XML::Simple->new;
-
-   return $xs->XMLin($data);
+   return $self->encode($data);
 }
 
 1;
@@ -59,11 +50,11 @@ __END__
 
 =head1 NAME
 
-Metabrik::Encoding::Xml - encoding::xml Brik
+Metabrik::String::Rot13 - string::rot13 Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

@@ -1,5 +1,5 @@
 #
-# $Id: Drupal.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Drupal.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # audit::drupal Brik
 #
@@ -11,7 +11,7 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable audit drupal) ],
       attributes => {
          url_path => [ qw(url_path) ],
@@ -109,7 +109,7 @@ Metabrik::Audit::Drupal - audit::drupal Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

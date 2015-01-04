@@ -1,5 +1,5 @@
 #
-# $Id: Read.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Read.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # file::read Brik
 #
@@ -11,17 +11,22 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable file) ],
       attributes => {
          input => [ qw(file) ],
          encoding => [ qw(utf8|ascii) ],
          fd => [ qw(file_descriptor) ],
+         as_array => [ qw(0|1) ],
+      },
+      attributes_default => {
+         as_array => 0,
       },
       commands => {
-         open => [ ],
+         open => [ qw(file|OPTIONAL) ],
          close => [ ],
          readall => [ ],
+         read_until_blank_line => [ ],
       },
    };
 }
@@ -29,29 +34,32 @@ sub brik_properties {
 sub brik_use_properties {
    my $self = shift;
 
-   # encoding: see `perldoc Encode::Supported' for other types
    return {
       attributes_default => {
-         input => $self->global->input || '/tmp/input.txt',
-         encoding => $self->global->encoding || 'utf8',
+         input => $self->global->input,
+         encoding => $self->global->encoding,
       },
    };
 }
 
 sub open {
    my $self = shift;
+   my ($input) = @_;
 
-   my $input = $self->input;
-   if (! defined($input)) {
-      return $self->log->error($self->brik_help_set('input'));
-   }
-
+   $input ||= $self->input;
    if (! -f $input) {
       return $self->log->error("open: file [$input] not found");
    }
 
-   my $encoding = $self->encoding;
-   my $r = open(my $out, "<$encoding", $input);
+   my $r;
+   my $out;
+   my $encoding = $self->encoding || 'ascii';
+   if ($encoding eq 'ascii') {
+      $r = open($out, '<', $input);
+   }
+   else {
+      $r = open($out, "<$encoding", $input);
+   }
    if (! defined($r)) {
       return $self->log->error("open: open: file [$input]: $!");
    }
@@ -77,12 +85,52 @@ sub readall {
       return $self->log->error($self->brik_help_run('open'));
    }
 
-   my $buf = '';
-   while (<$fd>) {
-      $buf .= $_;
+   if ($self->as_array) {
+      my @out = ();
+      while (<$fd>) {
+         chomp;
+         push @out, $_;
+      }
+      return \@out;
+   }
+   else {
+      my $out = '';
+      while (<$fd>) {
+         $out .= $_;
+      }
+      return $out;
    }
 
-   return $buf;
+   return;
+}
+
+sub read_until_blank_line {
+   my $self = shift;
+
+   my $fd = $self->fd;
+   if (! defined($fd)) {
+      return $self->log->error($self->brik_help_run('open'));
+   }
+
+   if ($self->as_array) {
+      my @out = ();
+      while (<$fd>) {
+         last if /^\s*$/;
+         chomp;
+         push @out, $_;
+      }
+      return \@out;
+   }
+   else {
+      my $out = '';
+      while (<$fd>) {
+         last if /^\s*$/;
+         $out .= $_;
+      }
+      return $out;
+   }
+
+   return;
 }
 
 1;
@@ -95,7 +143,7 @@ Metabrik::File::Read - file::read Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

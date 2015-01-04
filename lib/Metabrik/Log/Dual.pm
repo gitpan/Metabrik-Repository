@@ -1,5 +1,5 @@
 #
-# $Id: Dual.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Dual.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # log::dual Brik
 #
@@ -11,7 +11,7 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(log) ],
       attributes => {
          level => [ qw(0|1|2|3) ],
@@ -63,9 +63,7 @@ sub brik_preinit {
 }
 
 sub brik_init {
-   my $self = shift->SUPER::brik_init(
-      @_,
-   ) or return 1; # Init already done
+   my $self = shift;
 
    print "DEBUG log::dual brik_init\n";
 
@@ -81,7 +79,7 @@ sub brik_init {
 
    $self->_fd($fd);
 
-   return $self;
+   return $self->SUPER::brik_init;
 }
 
 sub _msg {
@@ -120,7 +118,9 @@ sub error {
    print $fd $buffer;
    print $buffer;
 
-   return 0;
+   # Returning undef is my official way of stating an error occured:
+   # Number 0 is for stating a false condition occured, not not error.
+   return;
 }
 
 sub fatal {
@@ -222,7 +222,7 @@ Metabrik::Log::Dual - log::dual Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

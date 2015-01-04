@@ -1,5 +1,5 @@
 #
-# $Id: Fetch.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Fetch.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # file::fetch Brik
 #
@@ -7,32 +7,33 @@ package Metabrik::File::Fetch;
 use strict;
 use warnings;
 
-use base qw(Metabrik);
+use base qw(Metabrik::Shell::Command);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable fetch wget) ],
       attributes => {
          output => [ qw(file) ],
       },
       commands => {
-         get => [ qw(uri) ],
-      },
-      require_used => {
-         'shell::command' => [ ],
+         get => [ qw(uri output|OPTIONAL) ],
+         md5sum => [ qw(file|OPTIONAL) ],
+         sha1sum => [ qw(file|OPTIONAL) ],
       },
       require_binaries => {
          'wget' => [ ],
+         'md5sum' => [ ],
+         'sha1sum' => [ ],
       },
    };
 }
 
 sub get {
    my $self = shift;
-   my ($uri) = @_;
+   my ($uri, $output) = @_;
 
-   my $output = $self->output;
+   $output ||= $self->output;
    if (! defined($output)) {
       return $self->log->error($self->brik_help_set('output'));
    }
@@ -43,7 +44,39 @@ sub get {
 
    my $cmd = "wget --output-document=$output $uri";
 
-   return $self->context->run('shell::command', 'system', $cmd);
+   return $self->system($cmd);
+}
+
+sub md5sum {
+   my $self = shift;
+   my ($file) = @_;
+
+   $file ||= $self->output;
+   if (! defined($file)) {
+      return $self->log->error($self->brik_help_set('output'));
+   }
+
+   my $cmd = "md5sum $file";
+   $self->as_matrix(1);
+   my $buf = $self->capture($cmd);
+
+   return $buf->[0][0];
+}
+
+sub sha1sum {
+   my $self = shift;
+   my ($file) = @_;
+
+   $file ||= $self->output;
+   if (! defined($file)) {
+      return $self->log->error($self->brik_help_set('output'));
+   }
+
+   my $cmd = "sha1sum $file";
+   $self->as_matrix(1);
+   my $buf = $self->capture($cmd);
+
+   return $buf->[0][0];
 }
 
 1;
@@ -56,7 +89,7 @@ Metabrik::File::Fetch - file::fetch Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

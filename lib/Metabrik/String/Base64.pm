@@ -1,9 +1,9 @@
 #
-# $Id: Hexa.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Base64.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
-# encoding::hexa Brik
+# string::base64 Brik
 #
-package Metabrik::Encoding::Hexa;
+package Metabrik::String::Base64;
 use strict;
 use warnings;
 
@@ -11,18 +11,11 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
-      tags => [ qw(unstable encode decode hex) ],
-      attributes => {
-         with_x => [ ],
-      },
-      attributes_default => {
-         with_x => 1,
-      },
+      revision => '$Revision: eff9afda3723 $',
+      tags => [ qw(unstable encode decode base64) ],
       commands => {
          encode => [ qw($data) ],
          decode => [ qw($data) ],
-         is_hexa => [ qw($data) ],
       },
       require_modules => {
          'MIME::Base64' => [ ],
@@ -38,11 +31,7 @@ sub encode {
       return $self->log->error($self->brik_help_run('encode'));
    }
 
-   my $encoded = unpack('H*', $data);
-
-   if ($self->with_x) {
-      $encoded =~ s/(..)/\\x$1/g;
-   }
+   my $encoded = MIME::Base64::encode_base64($data);
 
    return $encoded;
 }
@@ -55,26 +44,9 @@ sub decode {
       return $self->log->error($self->brik_help_run('decode'));
    }
 
-   # Keep only hex-compliant characters
-   $data =~ s/[^a-fA-F0-9]//g;
-
-   my $decoded = pack('H*', $data);
+   my $decoded = MIME::Base64::decode_base64($data);
 
    return $decoded;
-}
-
-sub is_hexa {
-   my $self = shift;
-   my ($data) = @_;
-
-   my $this = lc($data);
-   $this =~ s/\\x//g;
-
-   if ($this =~ /^[a-f0-9]+$/) {
-      return 1;
-   }
-
-   return 0;
 }
 
 1;
@@ -83,11 +55,11 @@ __END__
 
 =head1 NAME
 
-Metabrik::Encoding::Hexa - encoding::hexa Brik
+Metabrik::String::Base64 - string::base64 Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.

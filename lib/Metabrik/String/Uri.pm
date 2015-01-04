@@ -1,5 +1,5 @@
 #
-# $Id: Uri.pm 360 2014-11-16 14:52:06Z gomor $
+# $Id: Uri.pm,v eff9afda3723 2015/01/04 12:34:23 gomor $
 #
 # string::uri Brik
 #
@@ -11,13 +11,13 @@ use base qw(Metabrik);
 
 sub brik_properties {
    return {
-      revision => '$Revision: 360 $',
+      revision => '$Revision: eff9afda3723 $',
       tags => [ qw(unstable uri string) ],
       attributes => {
-         uri => [ qw(URI) ],
+         uri => [ qw(uri) ],
       },
       commands => {
-         parse => [ qw(uri) ],
+         parse => [ qw(uri|OPTIONAL) ],
          scheme => [ ],
          host => [ ],
          port => [ ],
@@ -32,25 +32,53 @@ sub brik_properties {
          authority => [ ],
          query_form => [ ],
          userinfo => [ ],
+         is_https_scheme => [ ],
       },
       require_modules => {
-         URI => [ ],
+         'URI' => [ ],
       },
    };
 }
 
 sub parse {
    my $self = shift;
-   my ($uri) = @_;
+   my ($string) = @_;
 
-   if (! defined($uri)) {
-      return $self->log->error($self->brik_help_run('parse'));
+   $string ||= $self->uri;
+   if (! defined($string)) {
+      return $self->log->error($self->brik_help_set('uri'));
    }
 
-   my $parse = URI->new($uri);
-   $self->uri($parse);
+   my $uri = URI->new($string);
 
-   return $parse;
+   return {
+      scheme => $uri->scheme || '',
+      host => $uri->host || '',
+      port => $uri->port || 80,
+      path => $uri->path || '/',
+      opaque => $uri->opaque || '',
+      fragment => $uri->fragment || '',
+      query => $uri->query || '',
+      path_query => $uri->path_query || '',
+      query_form => $uri->query_form || '',
+      userinfo => $uri->userinfo || '',
+      authority => $uri->authority || '',
+   };
+}
+
+sub is_https_scheme {
+   my $self = shift;
+   my ($parsed) = @_;
+
+   if (! defined($parsed)) {
+      return $self->log->error($self->brik_help_run('is_https_scheme'));
+   }
+
+   if (exists($parsed->{scheme}) && $parsed->{scheme} eq 'https') {
+      return 1;
+   }
+
+   return 0;
 }
 
 sub _this {
@@ -143,7 +171,7 @@ Metabrik::String::Uri - string::uri Brik
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2014, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2014-2015, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of The BSD 3-Clause License.
 See LICENSE file in the source distribution archive.
